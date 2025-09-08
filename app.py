@@ -34,7 +34,7 @@ else:
     print("❌ OpenAI API Key not found in environment variables.")
 
 try:
-    MODEL_NAME = 'sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2'
+    MODEL_NAME = 'intfloat/multilingual-e5-large'
     PERSIST_DIRECTORY = "my_chroma_db"
     COLLECTION_NAME = "recruitment_qa"
 
@@ -123,7 +123,7 @@ def get_chatgpt_response(message, from_number):
         return "عذرًا، خدمة OpenAI غير متاحة حاليًا."
     try:
         completion = openai_client.chat.completions.create(
-            model="gpt-4o", # ✨ استخدام النموذج الأفضل والأحدث
+            model="gpt-4.1", # ✨ استخدام النموذج الأفضل والأحدث
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": message}
