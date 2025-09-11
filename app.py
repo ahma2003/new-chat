@@ -255,7 +255,7 @@ class SmartResponseGenerator:
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
                 ],
-                max_tokens=200,  # مختصر للسرعة
+                max_tokens=500,  # مختصر للسرعة
                 temperature=0.1
             )
             
