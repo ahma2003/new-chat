@@ -72,10 +72,43 @@ class QuickResponseSystem:
             'ايش اخبارك': True, 'وش مسوي': True, 'كيف اموركم': True
         }
         
+        # 🙏 كلمات وعبارات الشكر باللهجة السعودية - جديد!
+        self.thanks_patterns = {
+            'شكرا': True, 'شكراً': True, 'شكر': True, 'مشكور': True, 'مشكوره': True,
+            'تسلم': True, 'تسلمي': True, 'تسلمين': True, 'تسلمون': True,
+            'يعطيك': True, 'يعطيكم': True, 'الله يعطيك': True, 'الله يعطيكم': True,
+            'العافية': True, 'يعطيك العافية': True, 'الله يعطيك العافية': True,
+            'جزاك': True, 'جزاكم': True, 'جزاك الله': True, 'جزاكم الله': True,
+            'خيراً': True, 'خير': True, 'جزاك الله خير': True, 'جزاك الله خيرا': True,
+            'ماقصرت': True, 'ماقصرتوا': True, 'ما قصرت': True, 'ما قصرتوا': True,
+            'مشكورين': True, 'مشكورات': True, 'thank': True, 'thanks': True,
+            'appreciate': True, 'بارك': True, 'بارك الله': True, 'الله يبارك': True,
+            'وفقك': True, 'وفقكم': True, 'الله يوفقك': True, 'الله يوفقكم': True,
+            'كثر خيرك': True, 'كثر خيركم': True, 'الله يكثر خيرك': True, 
+            'خلاص': True, 'كفايه': True, 'كافي': True, 'بس كذا': True,
+            'تمام': True, 'زين': True, 'ممتاز': True, 'perfect': True
+        }
+        
+        # جمل كاملة للشكر باللهجة السعودية
+        self.thanks_phrases = [
+            'شكرا لك', 'شكرا ليك', 'شكراً لك', 'شكراً ليك',
+            'الله يعطيك العافية', 'يعطيك العافية', 'الله يعطيكم العافية',
+            'تسلم إيدك', 'تسلم ايدك', 'تسلمي إيدك', 'تسلمي ايدك',
+            'جزاك الله خير', 'جزاك الله خيرا', 'جزاك الله خيراً',
+            'الله يجزاك خير', 'الله يجزيك خير', 'الله يجزيكم خير',
+            'ما قصرت', 'ماقصرت', 'ما قصرتوا', 'ماقصرتوا',
+            'كثر خيرك', 'الله يكثر خيرك', 'كثر خيركم',
+            'الله يوفقك', 'الله يوفقكم', 'وفقك الله', 'وفقكم الله',
+            'بارك الله فيك', 'بارك الله فيكم', 'الله يبارك فيك',
+            'شكرا على المساعدة', 'شكرا على المساعده', 'شكراً على المساعدة',
+            'thanks a lot', 'thank you', 'thank u', 'appreciate it',
+            'مشكورين والله', 'مشكور والله', 'تسلم والله'
+        ]
+        
         # كلمات دلالية للأسعار - محسّنة
         self.price_keywords = [
             'سعر', 'اسعار', 'أسعار', 'تكلفة', 'كلفة', 'تكاليف','اسعاركم',
-            'كم', 'فلوس', 'ريال', 'مبلغ', 'رسوم','عروضكم',
+            'فلوس', 'ريال', 'مبلغ', 'رسوم','عروضكم',
             'عرض', 'عروض', 'باقة', 'باقات', 'خصم', 'خصومات','خصوماتكم',
             'ثمن', 'مصاريف', 'مصروف', 'دفع', 'يكلف', 'تكلف', 'بكام'
         ]
@@ -108,6 +141,33 @@ class QuickResponseSystem:
                     return True
                     
         return False
+    
+    def is_thanks_message(self, message: str) -> bool:
+        """🙏 فحص سريع ودقيق لرسائل الشكر باللهجة السعودية - جديد!"""
+        if not message or len(message.strip()) == 0:
+            return False
+            
+        message_clean = message.lower().strip()
+        
+        # فحص الجمل الكاملة أولاً
+        for phrase in self.thanks_phrases:
+            if phrase in message_clean:
+                print(f"🙏 مطابقة جملة شكر كاملة: {phrase}")
+                return True
+        
+        # فحص الكلمات المفردة
+        words = message_clean.split()
+        thanks_word_count = 0
+        
+        for word in words:
+            clean_word = ''.join(c for c in word if c.isalnum() or c in 'أابتثجحخدذرزسشصضطظعغفقكلمنهويىءآإ')
+            
+            if clean_word in self.thanks_patterns:
+                thanks_word_count += 1
+                print(f"🙏 كلمة شكر: {clean_word}")
+        
+        # إذا وجد كلمة واحدة أو أكثر تدل على الشكر
+        return thanks_word_count >= 1
     
     def is_price_inquiry(self, message: str) -> bool:
         """فحص سريع ودقيق للسؤال عن الأسعار"""
@@ -143,6 +203,31 @@ class QuickResponseSystem:
 نحن هنا لخدمتك ومساعدتك في جميع احتياجاتك من العمالة المنزلية المدربة والمؤهلة.
 
 كيف يمكنني مساعدتك اليوم؟ 😊"""
+
+    def get_thanks_response(self) -> str:
+        """🙏 رد الشكر السريع باللهجة السعودية - جديد!"""
+        responses = [
+            """العفو عميلنا العزيز 🌟
+
+الله يعطيك العافية.. نحن في خدمتك دائماً في مكتب الركائز البشرية
+
+هل تحتاج أي مساعدة أخرى؟ 😊""",
+            
+            """أهلاً وسهلاً.. هذا واجبنا 🤝
+
+نحن سعداء بخدمتك في مكتب الركائز البشرية للاستقدام
+
+الله يوفقك.. ولا تتردد في التواصل معنا متى شئت! 💙""",
+            
+            """حياك الله.. ما قصرنا شي 🌟
+
+خدمتك شرف لنا في مكتب الركائز البشرية
+
+تواصل معنا في أي وقت.. نحن هنا لخدمتك! 📞"""
+        ]
+        
+        import random
+        return random.choice(responses)
 
     def get_price_response(self) -> tuple:
         """رد الأسعار المختصر مع الصورة"""
@@ -212,13 +297,18 @@ class SmartResponseGenerator:
             print(f"⚡ رد ترحيب فوري")
             return self.quick_system.get_welcome_response(), False, None
         
-        # 2. أولوية عليا للأسعار
+        # 2. أولوية عليا للشكر - جديد! 🙏
+        if self.quick_system.is_thanks_message(user_message):
+            print(f"🙏 رد شكر فوري")
+            return self.quick_system.get_thanks_response(), False, None
+        
+        # 3. أولوية عليا للأسعار
         if self.quick_system.is_price_inquiry(user_message):
             print(f"💰 طلب أسعار مكتشف")
             text_response, image_url = self.quick_system.get_price_response()
             return text_response, True, image_url
         
-        # 3. الردود العادية (سريعة)
+        # 4. الردود العادية (سريعة)
         print(f"🤔 معالجة عادية")
         
         # بحث سريع في قاعدة البيانات
@@ -491,6 +581,9 @@ def process_user_message_fast(phone_number: str, user_message: str):
             if quick_system.is_greeting_message(user_message):
                 bot_response = quick_system.get_welcome_response()
                 success = whatsapp_handler.send_message(phone_number, bot_response)
+            elif quick_system.is_thanks_message(user_message):  # 🙏 رد الشكر الاحتياطي - جديد!
+                bot_response = quick_system.get_thanks_response()
+                success = whatsapp_handler.send_message(phone_number, bot_response)
             elif quick_system.is_price_inquiry(user_message):
                 bot_response, image_url = quick_system.get_price_response()
                 success = whatsapp_handler.send_image_with_text(phone_number, bot_response, image_url)
@@ -512,14 +605,14 @@ def status():
     active_conversations = len(conversation_manager.conversations)
     
     return f"""
-    <html><head><title>بوت الركائز - سريع</title>
+    <html><head><title>بوت الركائز - سريع مع الشكر</title>
     <style>body{{font-family:Arial;margin:40px;background:#f0f8ff;}}
     .box{{background:white;padding:20px;border-radius:10px;margin:10px 0;}}
-    .green{{color:#28a745;}} .red{{color:#dc3545;}}
+    .green{{color:#28a745;}} .red{{color:#dc3545;}} .blue{{color:#007bff;}}
     </style></head><body>
     
     <div class="box">
-    <h1>🚀 مكتب الركائز - بوت سريع</h1>
+    <h1>🚀 مكتب الركائز - بوت سريع مع ردود الشكر</h1>
     </div>
     
     <div class="box">
@@ -527,6 +620,7 @@ def status():
     <p class="{'green' if openai_client else 'red'}">{'✅' if openai_client else '❌'} OpenAI API</p>
     <p class="{'green' if enhanced_retriever else 'red'}">{'✅' if enhanced_retriever else '❌'} قاعدة البيانات</p>
     <p class="green">⚡ الردود السريعة - نشط</p>
+    <p class="blue">🙏 <strong>جديد!</strong> ردود الشكر السريعة - نشط</p>
     <p class="green">📱 المحادثات النشطة: {active_conversations}</p>
     </div>
     
@@ -534,9 +628,21 @@ def status():
     <h2>⚡ المميزات:</h2>
     <ul>
     <li>✅ ردود ترحيب فورية (< 0.1s)</li>
+    <li class="blue">✅ <strong>جديد!</strong> ردود شكر فورية باللهجة السعودية</li>
     <li>✅ كشف أسعار تلقائي مع صورة</li>
     <li>✅ معدل استجابة 0.5 ثانية</li>
     <li>✅ ردود احتياطية ذكية</li>
+    </ul>
+    </div>
+    
+    <div class="box">
+    <h2>🙏 أمثلة رسائل الشكر المدعومة:</h2>
+    <ul>
+    <li><strong>شكراً ليك</strong> - شكرا لك - الله يعطيك العافية</li>
+    <li><strong>تسلم إيدك</strong> - ما قصرت - جزاك الله خير</li>
+    <li><strong>مشكور</strong> - الله يوفقك - كثر خيرك</li>
+    <li><strong>Thank you</strong> - Thanks - Appreciate it</li>
+    <li><strong>يعطيك العافية</strong> - بارك الله فيك</li>
     </ul>
     </div>
     
@@ -551,7 +657,7 @@ def status():
     <p><strong>ملاحظة:</strong> بعد رفع الصورة، استبدل الرابط في الكود</p>
     </div>
     
-    <p class="green"><strong>النظام يعمل بأقصى سرعة! 🚀</strong></p>
+    <p class="green"><strong>النظام يعمل بأقصى سرعة مع ردود الشكر الذكية! 🚀🙏</strong></p>
     </body></html>"""
 
 @app.route('/test-quick/<message>')
@@ -560,6 +666,7 @@ def test_quick_response(message):
     start_time = time.time()
     
     is_greeting = quick_system.is_greeting_message(message)
+    is_thanks = quick_system.is_thanks_message(message)  # 🙏 اختبار الشكر - جديد!
     is_price = quick_system.is_price_inquiry(message)
     
     processing_time = time.time() - start_time
@@ -567,17 +674,43 @@ def test_quick_response(message):
     result = {
         "الرسالة": message,
         "ترحيب؟": is_greeting,
+        "شكر؟": is_thanks,  # 🙏 جديد!
         "سؤال أسعار؟": is_price,
         "وقت المعالجة": f"{processing_time:.4f} ثانية",
-        "نوع الرد": "سريع" if (is_greeting or is_price) else "عادي"
+        "نوع الرد": "سريع" if (is_greeting or is_thanks or is_price) else "عادي"
     }
     
     if is_greeting:
         result["الرد"] = quick_system.get_welcome_response()
+    elif is_thanks:  # 🙏 رد الشكر - جديد!
+        result["الرد"] = quick_system.get_thanks_response()
     elif is_price:
         text, image = quick_system.get_price_response()
         result["الرد"] = text
         result["صورة"] = image
+    
+    return jsonify(result, ensure_ascii=False)
+
+# مسار جديد لاختبار ردود الشكر فقط 🙏
+@app.route('/test-thanks/<message>')
+def test_thanks_only(message):
+    """اختبار خاص لردود الشكر فقط"""
+    start_time = time.time()
+    
+    is_thanks = quick_system.is_thanks_message(message)
+    processing_time = time.time() - start_time
+    
+    result = {
+        "الرسالة": message,
+        "هل هي رسالة شكر؟": is_thanks,
+        "وقت المعالجة": f"{processing_time:.4f} ثانية"
+    }
+    
+    if is_thanks:
+        result["الرد"] = quick_system.get_thanks_response()
+        result["نوع الرد"] = "شكر فوري 🙏"
+    else:
+        result["نوع الرد"] = "ليست رسالة شكر"
     
     return jsonify(result, ensure_ascii=False)
 
@@ -608,12 +741,13 @@ cleanup_thread = threading.Thread(target=quick_cleanup, daemon=True)
 cleanup_thread.start()
 
 if __name__ == '__main__':
-    print("🚀 تشغيل بوت الركائز السريع...")
+    print("🚀 تشغيل بوت الركائز السريع مع ردود الشكر...")
     print("⚡ المميزات:")
     print("   - ردود فورية للترحيب والأسعار")
+    print("   - 🙏 ردود شكر فورية باللهجة السعودية - جديد!")
     print("   - كشف ذكي للكلمات العربية") 
     print("   - إرسال صور الأسعار تلقائياً")
     print("   - معدل استجابة 0.5 ثانية")
     print("   - ردود احتياطية ذكية")
-    print("=" * 40)
+    print("=" * 50)
     app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
