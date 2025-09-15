@@ -1,0 +1,80 @@
+[
+  {
+    "phone_number": "966501234567",
+    "name": "أحمد المحمد",
+    "gender": "ذكر",
+    "past_services": [
+      {
+        "worker_name": "سارة",
+        "nationality": "فلبينية",
+        "job_title": "عاملة منزلية",
+        "contract_date": "2023-01-15",
+        "status": "مستلمة",
+        "contract_id": "CUST001-SARAH-001"
+      }
+    ],
+    "current_requests": [],
+    "preferred_nationality": "فلبينية",
+    "preferences": "يهتم بالعاملات ذوات الخبرة، سريع في اتخاذ القرار."
+  },
+  {
+    "phone_number": "966501963427",
+    "name": "فاطمة السالم",
+    "gender": "أنثى",
+    "past_services": [
+      {
+        "worker_name": "آنا",
+        "nationality": "سريلانكية",
+        "job_title": "مربية أطفال",
+        "contract_date": "2023-03-20",
+        "status": "مستلمة",
+        "contract_id": "CUST002-ANNA-001"
+      },
+      {
+        "worker_name": "ماري",
+        "nationality": "فيتنامية",
+        "job_title": "عاملة منزلية",
+        "contract_date": "2024-02-10",
+        "status": "تحت الإجراء (وصول خلال أسبوع)",
+        "contract_id": "CUST002-MARY-002"
+      }
+    ],
+    "current_requests": [
+      {
+        "request_id": "REQ001-FATIMA-001",
+        "type": "عاملة منزلية",
+        "nationality_preference": "فيتنامية",
+        "status": "قيد الوصول",
+        "estimated_delivery": "2024-07-25"
+      }
+    ],
+    "preferred_nationality": "سريلانكية، فيتنامية",
+    "preferences": "تركز على الأمانة وحسن التعامل مع الأطفال، تحب التحديثات الدورية."
+  },
+  {
+    "phone_number": "966531122334",
+    "name": "خالد العتيبي",
+    "gender": "ذكر",
+    "past_services": [],
+    "current_requests": [
+      {
+        "request_id": "REQ002-KHALED-001",
+        "type": "سائق خاص",
+        "nationality_preference": "هندي",
+        "status": "الوثائق قيد التجهيز",
+        "estimated_delivery": "2024-08-10"
+      }
+    ],
+    "preferred_nationality": "هندي",
+    "preferences": "يبحث عن سائقين لديهم رخصة قيادة سعودية، مهتم بالسرعة في الإجراءات."
+  },
+  {
+    "phone_number": "966590001111",
+    "name": "ليلى الشهري",
+    "gender": "أنثى",
+    "past_services": [],
+    "current_requests": [],
+    "preferred_nationality": "إثيوبية",
+    "preferences": "ترغب في عاملات يجيدن الطبخ، وتبحث عن أسعار تنافسية."
+  }
+]

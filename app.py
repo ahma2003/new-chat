@@ -1,4 +1,3 @@
-# enhanced_app_optimized_v2.py
 import os
 import json
 import requests
@@ -20,6 +19,59 @@ PHONE_NUMBER_ID = os.environ.get('WHATSAPP_PHONE_NUMBER_ID')
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY')
 
 app = Flask(__name__)
+
+# --- 🆕 نظام إدارة العملاء الجديد ---
+class CustomerManager:
+    def __init__(self, data_file="customers_data.json"):
+        self.data_file = data_file
+        self.customers_data: Dict[str, Dict] = {} # تخزين البيانات برقم الجوال كمفتاح
+        self._load_customers_data()
+        self.data_lock = threading.Lock() # لتجنب مشاكل الوصول المتزامن
+
+    def _load_customers_data(self):
+        """تحميل بيانات العملاء من ملف JSON."""
+        if os.path.exists(self.data_file):
+            try:
+                with open(self.data_file, 'r', encoding='utf-8') as f:
+                    raw_data = json.load(f)
+                    for customer in raw_data:
+                        # WhatsApp phone numbers often come with country code but no '+'
+                        # Ensure consistency by storing/accessing without '+' if it's not in your data
+                        phone_number_clean = customer['phone_number'].replace('+', '')
+                        self.customers_data[phone_number_clean] = customer
+                print(f"✅ تم تحميل بيانات {len(self.customers_data)} عميل.")
+            except Exception as e:
+                print(f"❌ خطأ في تحميل بيانات العملاء: {e}")
+                self.customers_data = {}
+        else:
+            print(f"⚠️ ملف بيانات العملاء '{self.data_file}' غير موجود. يرجى التأكد من إنشائه.")
+            self.customers_data = {}
+
+    def get_customer_info(self, phone_number: str) -> Optional[Dict]:
+        """الحصول على معلومات عميل محدد."""
+        # Clean phone number for lookup (remove + if present)
+        clean_phone_number = phone_number.replace('+', '')
+        with self.data_lock:
+            return self.customers_data.get(clean_phone_number)
+
+    def update_customer_info(self, phone_number: str, new_info: Dict):
+        """تحديث معلومات عميل وحفظها في الملف (للتوسع المستقبلي)."""
+        clean_phone_number = phone_number.replace('+', '')
+        with self.data_lock:
+            if clean_phone_number in self.customers_data:
+                self.customers_data[clean_phone_number].update(new_info)
+                self._save_customers_data()
+            else:
+                print(f"⚠️ لا يمكن تحديث العميل: {phone_number} غير موجود في قاعدة البيانات.")
+
+    def _save_customers_data(self):
+        """حفظ بيانات العملاء إلى ملف JSON (للتوسع المستقبلي)."""
+        try:
+            with open(self.data_file, 'w', encoding='utf-8') as f:
+                json.dump(list(self.customers_data.values()), f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            print(f"❌ خطأ في حفظ بيانات العملاء: {e}")
+
 
 # --- 🚀 نظام ذاكرة محادثات محسّن ---
 class ConversationManager:
@@ -126,123 +178,54 @@ class QuickResponseSystem:
         ]
     
     def is_greeting_message(self, message: str) -> bool:
-        """فحص سريع للرسائل الترحيبية"""
-        if not message or len(message.strip()) == 0:
-            return False
-            
+        if not message or len(message.strip()) == 0: return False
         message_clean = message.lower().strip()
         words = message_clean.split()
-        
-        # إذا الرسالة قصيرة وتحتوي على ترحيب
         if len(words) <= 6:
             for word in words:
                 clean_word = ''.join(c for c in word if c.isalnum() or c in 'أابتثجحخدذرزسشصضطظعغفقكلمنهويىءآإ')
-                if clean_word in self.welcome_patterns:
-                    return True
-                    
+                if clean_word in self.welcome_patterns: return True
         return False
     
     def is_thanks_message(self, message: str) -> bool:
-        """🙏 فحص سريع ودقيق لرسائل الشكر باللهجة السعودية - جديد!"""
-        if not message or len(message.strip()) == 0:
-            return False
-            
+        if not message or len(message.strip()) == 0: return False
         message_clean = message.lower().strip()
-        
-        # فحص الجمل الكاملة أولاً
         for phrase in self.thanks_phrases:
-            if phrase in message_clean:
-                print(f"🙏 مطابقة جملة شكر كاملة: {phrase}")
-                return True
-        
-        # فحص الكلمات المفردة
+            if phrase in message_clean: return True
         words = message_clean.split()
         thanks_word_count = 0
-        
         for word in words:
             clean_word = ''.join(c for c in word if c.isalnum() or c in 'أابتثجحخدذرزسشصضطظعغفقكلمنهويىءآإ')
-            
-            if clean_word in self.thanks_patterns:
-                thanks_word_count += 1
-                print(f"🙏 كلمة شكر: {clean_word}")
-        
-        # إذا وجد كلمة واحدة أو أكثر تدل على الشكر
+            if clean_word in self.thanks_patterns: thanks_word_count += 1
         return thanks_word_count >= 1
     
     def is_price_inquiry(self, message: str) -> bool:
-        """فحص سريع ودقيق للسؤال عن الأسعار"""
-        if not message or len(message.strip()) == 0:
-            return False
-            
+        if not message or len(message.strip()) == 0: return False
         message_clean = message.lower().strip()
-        
-        # فحص الجمل الكاملة أولاً
         for phrase in self.price_phrases:
-            if phrase in message_clean:
-                print(f"🎯 مطابقة جملة كاملة: {phrase}")
-                return True
-        
-        # فحص الكلمات المفردة
+            if phrase in message_clean: return True
         words = message_clean.split()
         price_word_count = 0
-        
         for word in words:
             clean_word = ''.join(c for c in word if c.isalnum() or c in 'أابتثجحخدذرزسشصضطظعغفقكلمنهويىءآإ')
-            
-            if clean_word in self.price_keywords:
-                price_word_count += 1
-                print(f"🎯 كلمة سعر: {clean_word}")
-        
-        # إذا وجد كلمة واحدة أو أكثر تدل على السعر
+            if clean_word in self.price_keywords: price_word_count += 1
         return price_word_count >= 1
     
     def get_welcome_response(self) -> str:
-        """رد الترحيب السريع"""
-        return """أهلاً وسهلاً بك في مكتب الركائز البشرية للاستقدام 🌟
-
-نحن هنا لخدمتك ومساعدتك في جميع احتياجاتك من العمالة المنزلية المدربة والمؤهلة.
-
-كيف يمكنني مساعدتك اليوم؟ 😊"""
+        return "أهلاً وسهلاً بك في مكتب الركائز البشرية للاستقدام 🌟\n\nنحن هنا لخدمتك ومساعدتك في جميع احتياجاتك من العمالة المنزلية المدربة والمؤهلة.\n\nكيف يمكنني مساعدتك اليوم؟ 😊"
 
     def get_thanks_response(self) -> str:
-        """🙏 رد الشكر السريع باللهجة السعودية - جديد!"""
         responses = [
-            """العفو عميلنا العزيز 🌟
-
-الله يعطيك العافية.. نحن في خدمتك دائماً في مكتب الركائز البشرية
-
-هل تحتاج أي مساعدة أخرى؟ 😊""",
-            
-            """أهلاً وسهلاً.. هذا واجبنا 🤝
-
-نحن سعداء بخدمتك في مكتب الركائز البشرية للاستقدام
-
-الله يوفقك.. ولا تتردد في التواصل معنا متى شئت! 💙""",
-            
-            """حياك الله.. ما قصرنا شي 🌟
-
-خدمتك شرف لنا في مكتب الركائز البشرية
-
-تواصل معنا في أي وقت.. نحن هنا لخدمتك! 📞"""
+            "العفو عميلنا العزيز 🌟\n\nالله يعطيك العافية.. نحن في خدمتك دائماً في مكتب الركائز البشرية\n\nهل تحتاج أي مساعدة أخرى؟ 😊",
+            "أهلاً وسهلاً.. هذا واجبنا 🤝\n\nنحن سعداء بخدمتك في مكتب الركائز البشرية للاستقدام\n\nالله يوفقك.. ولا تتردد في التواصل معنا متى شئت! 💙",
+            "حياك الله.. ما سوينا إلا الواجب 🌟\n\nخدمتك شرف لنا في مكتب الركائز البشرية\n\nتواصل معنا في أي وقت.. نحن هنا لخدمتك! 📞"
         ]
-        
         import random
         return random.choice(responses)
 
     def get_price_response(self) -> tuple:
-        """رد الأسعار المختصر مع الصورة"""
-        text_response = """إليك عروضنا الحالية للعمالة المنزلية المدربة 💼
-
-🎉 عرض خاص بمناسبة اليوم الوطني السعودي 95
-
-للاستفسار والحجز اتصل بنا:
-📞 0556914447 / 0506207444 / 0537914445"""
-        
-
-        
-        # ضع رابط صورتك هنا بعد رفعها
-        image_url = "https://i.imghippo.com/files/La2232xjc.jpg"  # استبدل برابط صورتك
-        
+        text_response = "إليك عروضنا الحالية للعمالة المنزلية المدربة 💼\n\n🎉 عرض خاص بمناسبة اليوم الوطني السعودي 95\n\nللاستفسار والحجز اتصل بنا:\n📞 0556914447 / 0506207444 / 0537914445"
+        image_url = "https://i.imghippo.com/files/La2232xjc.jpg" # استبدل برابط صورتك
         return text_response, image_url
 
 # --- 🔍 نظام البحث المحسن ---
@@ -250,315 +233,118 @@ class EnhancedRetriever:
     def __init__(self, model, collection):
         self.model = model
         self.collection = collection
-        self.high_confidence_threshold = 0.75  # خفضت العتبة للاستجابة الأسرع
     
     def retrieve_best_matches(self, user_query: str, top_k: int = 3) -> tuple:
-        """استرجاع سريع للمطابقات"""
-        if not self.model or not self.collection:
-            return [], 0.0
-        
+        if not self.model or not self.collection: return [], 0.0
         try:
-            # بحث سريع
             query_embedding = self.model.encode([f"query: {user_query}"], normalize_embeddings=True)
-            results = self.collection.query(
-                query_embeddings=query_embedding.tolist(),
-                n_results=min(top_k, 5)  # أقل عدد للسرعة
-            )
-            
-            if not results.get('metadatas') or not results['metadatas'][0]:
-                return [], 0.0
-            
-            # حساب الثقة
+            results = self.collection.query(query_embeddings=query_embedding.tolist(), n_results=min(top_k, 5))
+            if not results.get('metadatas') or not results['metadatas'][0]: return [], 0.0
             best_score = 1 - results['distances'][0][0] if 'distances' in results else 0
-            results_data = results['metadatas'][0]
-            
-            return results_data, best_score
-            
+            return results['metadatas'][0], best_score
         except Exception as e:
             print(f"❌ خطأ في البحث: {e}")
             return [], 0.0
 
-# --- 🤖 نظام الردود الذكي السريع ---
+# --- 🤖 نظام الردود الذكي السريع والمخصص ---
 class SmartResponseGenerator:
-    def __init__(self, openai_client, retriever, quick_system):
+    def __init__(self, openai_client, retriever, quick_system, customer_manager):
         self.openai_client = openai_client
         self.retriever = retriever
         self.quick_system = quick_system
+        self.customer_manager = customer_manager
     
     def generate_response(self, user_message: str, phone_number: str, is_first: bool) -> tuple:
-        """
-        إنتاج الرد السريع - يرجع (response_text, should_send_image, image_url)
-        """
+        customer_info = self.customer_manager.get_customer_info(phone_number)
+        customer_name = customer_info['name'] if customer_info and 'name' in customer_info else "عميلنا العزيز"
         
-        print(f"🔍 معالجة: '{user_message}' من {phone_number}")
-        
-        # 1. أولوية عليا للترحيب
         if self.quick_system.is_greeting_message(user_message):
-            print(f"⚡ رد ترحيب فوري")
-            return self.quick_system.get_welcome_response(), False, None
+            if customer_info:
+                return f"أهلاً وسهلاً بك يا {customer_name} في مكتب الركائز البشرية للاستقدام 🌟\n\nيسعدنا تواصلك معنا دائماً.\nكيف يمكنني مساعدتك اليوم؟ 😊", False, None
+            else:
+                return self.quick_system.get_welcome_response(), False, None
         
-        # 2. أولوية عليا للشكر - جديد! 🙏
         if self.quick_system.is_thanks_message(user_message):
-            print(f"🙏 رد شكر فوري")
-            return self.quick_system.get_thanks_response(), False, None
+            if customer_info:
+                 return f"العفو يا {customer_name} 🌟\n\nالله يعطيك العافية.. نحن في خدمتك دائماً في مكتب الركائز البشرية.\nهل تحتاج أي مساعدة أخرى؟ 😊", False, None
+            else:
+                return self.quick_system.get_thanks_response(), False, None
         
-        # 3. أولوية عليا للأسعار
         if self.quick_system.is_price_inquiry(user_message):
-            print(f"💰 طلب أسعار مكتشف")
             text_response, image_url = self.quick_system.get_price_response()
+            if customer_info:
+                 text_response = f"حياك الله يا {customer_name} 🤝\n" + text_response
             return text_response, True, image_url
         
-        # 4. الردود العادية (سريعة)
-        print(f"🤔 معالجة عادية")
+        retrieved_data, _ = self.retriever.retrieve_best_matches(user_message) if self.retriever else ([], 0)
         
-        # بحث سريع في قاعدة البيانات
-        retrieved_data, confidence_score = self.retriever.retrieve_best_matches(user_message) if self.retriever else ([], 0)
-        
-        # إذا لم يكن هناك OpenAI
         if not self.openai_client:
-            if retrieved_data:
-                return f"بناءً على معلوماتنا:\n\n{retrieved_data[0]['answer']}\n\nهل يمكنني مساعدتك في شيء آخر؟", False, None
-            else:
-                return "أهلاً بك في مكتب الركائز البشرية! 🌟\nسيتواصل معك أحد موظفينا قريباً للمساعدة.\n\nهل تريد معرفة أسعارنا الحالية؟", False, None
+            return (f"بناءً على معلوماتنا:\n\n{retrieved_data[0]['answer']}" if retrieved_data else "أهلاً بك! 🌟\nسيتواصل معك أحد موظفينا قريباً للمساعدة.", False, None)
         
         try:
-            # رد ذكي وسريع
             context = self.generate_context_string(retrieved_data)
-            
-            if is_first:
-                intro = "أهلاً وسهلاً بك في مكتب الركائز البشرية للاستقدام! 🌟\n\n"
-            else:
-                intro = ""
-                
-            system_prompt = f"""{intro}أنت مساعد مكتب الركائز البشرية للاستقدام.
+            customer_context = self.build_customer_context(customer_info)
+            intro = self.build_intro(is_first, customer_info, customer_name)
 
-أجب بشكل مختصر وودود من المعلومات المتوفرة فقط.
-استخدم عبارات: عميلنا العزيز، حياك الله، يسعدنا خدمتكم.
-اختتم بسؤال لتشجيع الحوار.
+            system_prompt = f"""{intro}أنت مساعد مكتب الركائز البشرية للاستقدام.
+شخصيتك: ودودة جداً، مهتمة، مبادرة، تتكلم بلهجة سعودية خفيفة.
+هدف رئيسي: إرضاء العميل وتقديم خدمة مميزة ومخصصة له.
+استخدم معلومات العميل لتقديم ردود شخصية. إذا كان العميل معروفاً، ابدأ بتحيته باسمه.
+اقتبس من خدماته السابقة أو طلباته الحالية إذا كانت ذات صلة بالسؤال.
+قدم اقتراحات بناءً على تفضيلاته. اختتم بسؤال لتشجيع الحوار.
 
 السؤال: {user_message}
-المعلومات: {context}"""
 
+{customer_context}
+المعلومات العامة المتاحة: {context}"""
+            
             response = self.openai_client.chat.completions.create(
                 model="gpt-4",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-                max_tokens=700,  # مختصر للسرعة
-                temperature=0.1
+                messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}],
+                max_tokens=700, temperature=0.4
             )
-            
             return response.choices[0].message.content.strip(), False, None
-            
         except Exception as e:
             print(f"❌ خطأ في OpenAI: {e}")
-            # رد احتياطي سريع
-            if retrieved_data:
-                return f"عميلنا العزيز، بناءً على خبرتنا:\n\n{retrieved_data[0]['answer']}\n\nللمزيد من المساعدة، اتصل بنا: 📞 0556914447", False, None
-            else:
-                return "أهلاً بك! 🌟 سيتواصل معك أحد متخصصينا قريباً.\n\nهل تريد معرفة عروضنا الحالية؟", False, None
+            return (f"عميلنا العزيز، بناءً على خبرتنا:\n\n{retrieved_data[0]['answer']}" if retrieved_data else f"أهلاً بك يا {customer_name}! 🌟 سيتواصل معك أحد متخصصينا قريباً.", False, None)
     
     def generate_context_string(self, retrieved_data):
-        """إنشاء سياق مختصر"""
-        if not retrieved_data:
-            return "لا توجد معلومات محددة."
-        
-        # أول نتيجة فقط للسرعة
+        if not retrieved_data: return "لا توجد معلومات محددة."
         item = retrieved_data[0]
         return f"السؤال: {item['question']}\nالإجابة: {item['answer']}"
 
-# --- 📱 نظام WhatsApp السريع ---
-class WhatsAppHandler:
-    def __init__(self, quick_system):
-        self.processing_messages = set()
-        self.rate_limit = {}
-        self.quick_system = quick_system
-    
-    def is_duplicate_message(self, message_id: str) -> bool:
-        """فحص الرسائل المكررة"""
-        if message_id in self.processing_messages:
-            return True
-        self.processing_messages.add(message_id)
+    def build_intro(self, is_first, customer_info, customer_name):
+        if is_first and not customer_info:
+            return "أهلاً وسهلاً بك في مكتب الركائز البشرية للاستقدام! 🌟\n\n"
+        elif is_first and customer_info:
+            return f"أهلاً وسهلاً بك مجدداً يا {customer_name} في مكتب الركائز البشرية 🌟\n\nيسعدنا تواصلك معنا.\n"
+        return ""
+
+    def build_customer_context(self, customer_info):
+        if not customer_info: return ""
+        context_parts = [
+            "معلومات العميل:",
+            f"الاسم: {customer_info.get('name', 'غير معروف')}",
+            f"الجنس: {customer_info.get('gender', 'غير معروف')}"
+        ]
+        if customer_info.get('past_services'):
+            context_parts.append("خدمات سابقة (العاملات المستقدمة):")
+            for service in customer_info['past_services']:
+                context_parts.append(f"- {service.get('worker_name', '')} ({service.get('nationality', '')}) - {service.get('job_title', '')}، الحالة: {service.get('status', '')}")
+        else:
+            context_parts.append("- لم يسبق له استقدام عاملات.")
         
-        # إزالة المعالجة بعد 30 ثانية
-        threading.Timer(30.0, lambda: self.processing_messages.discard(message_id)).start()
-        return False
-    
-    def check_rate_limit(self, phone_number: str) -> bool:
-        """فحص معدل سريع - رسالة كل 0.5 ثانية"""
-        now = time.time()
-        if phone_number in self.rate_limit:
-            if now - self.rate_limit[phone_number] < 0.5:  # نصف ثانية فقط
-                return True
-        self.rate_limit[phone_number] = now
-        return False
-    
-    def send_message(self, to_number: str, message: str) -> bool:
-        """إرسال رسالة سريع"""
-        if not ACCESS_TOKEN or not PHONE_NUMBER_ID:
-            print("❌ معلومات WhatsApp غير مكتملة")
-            return False
+        if customer_info.get('current_requests'):
+            context_parts.append("طلبات استقدام حالية:")
+            for req in customer_info['current_requests']:
+                context_parts.append(f"- {req.get('type', '')} ({req.get('nationality_preference', '')})، الحالة: {req.get('status', '')}، التوصيل المتوقع: {req.get('estimated_delivery', 'غير معروف')}")
+        else:
+            context_parts.append("- لا توجد لديه طلبات استقدام حالية.")
             
-        url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
-        headers = {
-            "Authorization": f"Bearer {ACCESS_TOKEN}",
-            "Content-Type": "application/json"
-        }
-        
-        message = message.strip()
-        if len(message) > 900:  # حد أقل للسرعة
-            message = message[:850] + "...\n\nللمزيد: 📞 0556914447"
-        
-        data = {
-            "messaging_product": "whatsapp",
-            "to": to_number,
-            "text": {"body": message}
-        }
-        
-        try:
-            response = requests.post(url, headers=headers, data=json.dumps(data), timeout=5)  # timeout أقل
-            response.raise_for_status()
-            print(f"✅ تم الإرسال إلى {to_number}")
-            return True
-        except requests.exceptions.RequestException as e:
-            print(f"❌ خطأ WhatsApp: {e}")
-            return False
-    
-    def send_image_with_text(self, to_number: str, message: str, image_url: str) -> bool:
-        """إرسال صورة مع رسالة"""
-        if not ACCESS_TOKEN or not PHONE_NUMBER_ID:
-            return False
-            
-        url = f"https://graph.facebook.com/v18.0/{PHONE_NUMBER_ID}/messages"
-        headers = {
-            "Authorization": f"Bearer {ACCESS_TOKEN}",
-            "Content-Type": "application/json"
-        }
-        
-        # رسالة مختصرة للـ caption
-        if len(message) > 800:
-            message = message[:750] + "...\n📞 للمزيد: 0556914447"
-        
-        data = {
-            "messaging_product": "whatsapp",
-            "to": to_number,
-            "type": "image",
-            "image": {
-                "link": image_url,
-                "caption": message
-            }
-        }
-        
-        try:
-            response = requests.post(url, headers=headers, data=json.dumps(data), timeout=8)
-            response.raise_for_status()
-            print(f"✅ تم إرسال الصورة إلى {to_number}")
-            return True
-        except requests.exceptions.RequestException as e:
-            print(f"❌ خطأ في الصورة: {e}")
-            # رد احتياطي بالنص فقط
-            return self.send_message(to_number, f"{message}\n\n📞 اتصل للحصول على صورة الأسعار: 0556914447")
-
-# --- 🎯 تهيئة النظام السريع ---
-conversation_manager = ConversationManager()
-quick_system = QuickResponseSystem()
-whatsapp_handler = WhatsAppHandler(quick_system)
-
-# تحميل مكونات الذكاء الاصطناعي
-openai_client = None
-enhanced_retriever = None
-response_generator = None
-
-if OPENAI_API_KEY:
-    openai_client = OpenAI(api_key=OPENAI_API_KEY)
-    print("✅ OpenAI جاهز")
-
-# تحميل ChromaDB (اختياري - للسرعة)
-try:
-    MODEL_NAME = 'intfloat/multilingual-e5-large'
-    PERSIST_DIRECTORY = "my_chroma_db"
-    COLLECTION_NAME = "recruitment_qa"
-    
-    print("📄 تحميل نموذج الذكاء الاصطناعي...")
-    model = SentenceTransformer(MODEL_NAME)
-    
-    print("📄 الاتصال بقاعدة البيانات...")
-    chroma_client = chromadb.PersistentClient(path=PERSIST_DIRECTORY)
-    collection = chroma_client.get_collection(name=COLLECTION_NAME)
-    
-    enhanced_retriever = EnhancedRetriever(model, collection)
-    response_generator = SmartResponseGenerator(openai_client, enhanced_retriever, quick_system)
-    
-    print(f"✅ النظام جاهز! قاعدة البيانات: {collection.count()} مستند")
-
-except Exception as e:
-    print(f"❌ فشل تحميل AI: {e}")
-    print("💡 سيعمل بالردود السريعة فقط")
-    response_generator = SmartResponseGenerator(openai_client, None, quick_system)
-
-# --- 🚀 المسارات الرئيسية ---
-@app.route('/webhook', methods=['GET', 'POST'])
-def webhook():
-    if request.method == 'GET':
-        mode = request.args.get('hub.mode')
-        token = request.args.get('hub.verify_token')
-        challenge = request.args.get('hub.challenge')
-        
-        if mode == 'subscribe' and token == VERIFY_TOKEN:
-            return challenge, 200
-        return 'فشل التحقق', 403
-    
-    if request.method == 'POST':
-        data = request.get_json()
-        
-        if not data or 'entry' not in data:
-            return 'OK', 200
-        
-        # معالجة سريعة للرسائل
-        for entry in data['entry']:
-            for change in entry.get('changes', []):
-                value = change.get('value', {})
-                
-                if 'messages' not in value:
-                    continue
-                
-                for message_data in value['messages']:
-                    if message_data.get('type') != 'text':
-                        continue
-                    
-                    message_id = message_data.get('id', '')
-                    phone_number = message_data.get('from', '')
-                    user_message = message_data.get('text', {}).get('body', '').strip()
-                    
-                    if not phone_number or not user_message:
-                        continue
-                    
-                    if whatsapp_handler.is_duplicate_message(message_id):
-                        print(f"⚠️ رسالة مكررة: {message_id}")
-                        continue
-                    
-                    if whatsapp_handler.check_rate_limit(phone_number):
-                        print(f"⚠️ سرعة عالية من: {phone_number}")
-                        continue
-                    
-                    # معالجة فورية في thread منفصل
-                    thread = threading.Thread(
-                        target=process_user_message_fast,
-                        args=(phone_number, user_message),
-                        daemon=True
-                    )
-                    thread.start()
-        
-        return 'OK', 200
-
-def process_user_message_fast(phone_number: str, user_message: str):
-    """معالجة سريعة للرسائل"""
-    start_time = time.time()
-    
-    try:
-        # إدارة المحادثة
-        is_first = conversation_manager.is_first_message(phone_number)
+        context_parts.append(f"الجنسية المفضلة سابقاً: {customer_info.get('preferred_nationality', 'غير محدد')}")
+        context_parts.append(f"تفضيلات العميل العامة: {customer_info.get('preferences', 'لا توجد تفضيلات محددة.')}")
+        return "\n".join(context_parts) + "\n-------\n"
+                is_first = conversation_manager.is_first_message(phone_number)
         
         if is_first:
             conversation_manager.register_conversation(phone_number)
@@ -573,91 +359,70 @@ def process_user_message_fast(phone_number: str, user_message: str):
             
             # إرسال الرد
             if should_send_image and image_url:
-                success = whatsapp_handler.send_image_with_text(phone_number, bot_response, image_url)
+                whatsapp_handler.send_image_with_text(phone_number, bot_response, image_url)
             else:
-                success = whatsapp_handler.send_message(phone_number, bot_response)
+                whatsapp_handler.send_message(phone_number, bot_response)
         else:
-            # نظام احتياطي أساسي
+            # نظام احتياطي أساسي (في حال لم يتم تحميل response_generator)
             if quick_system.is_greeting_message(user_message):
                 bot_response = quick_system.get_welcome_response()
-                success = whatsapp_handler.send_message(phone_number, bot_response)
-            elif quick_system.is_thanks_message(user_message):  # 🙏 رد الشكر الاحتياطي - جديد!
+                whatsapp_handler.send_message(phone_number, bot_response)
+            elif quick_system.is_thanks_message(user_message):
                 bot_response = quick_system.get_thanks_response()
-                success = whatsapp_handler.send_message(phone_number, bot_response)
+                whatsapp_handler.send_message(phone_number, bot_response)
             elif quick_system.is_price_inquiry(user_message):
                 bot_response, image_url = quick_system.get_price_response()
-                success = whatsapp_handler.send_image_with_text(phone_number, bot_response, image_url)
+                whatsapp_handler.send_image_with_text(phone_number, bot_response, image_url)
             else:
                 bot_response = "أهلاً بك في مكتب الركائز البشرية! 🌟\nسيتواصل معك متخصص قريباً.\n📞 0556914447"
-                success = whatsapp_handler.send_message(phone_number, bot_response)
+                whatsapp_handler.send_message(phone_number, bot_response)
         
         # إحصائيات سريعة
         response_time = time.time() - start_time
         print(f"✅ استجابة في {response_time:.2f}s لـ {phone_number}")
         
     except Exception as e:
-        print(f"❌ خطأ: {e}")
-        whatsapp_handler.send_message(phone_number, "عذراً، حدث خطأ تقني. 📞 0556914447")
+        print(f"❌ خطأ فادح في معالجة الرسالة: {e}")
+        whatsapp_handler.send_message(phone_number, "عذراً، حدث خطأ تقني. يرجى المحاولة مرة أخرى أو التواصل معنا على الرقم: 📞 0556914447")
 
 @app.route('/')
 def status():
     """صفحة حالة سريعة"""
     active_conversations = len(conversation_manager.conversations)
+    customers_loaded = len(customer_manager.customers_data)
     
     return f"""
-    <html><head><title>بوت الركائز - سريع مع الشكر</title>
-    <style>body{{font-family:Arial;margin:40px;background:#f0f8ff;}}
-    .box{{background:white;padding:20px;border-radius:10px;margin:10px 0;}}
-    .green{{color:#28a745;}} .red{{color:#dc3545;}} .blue{{color:#007bff;}}
+    <html><head><title>بوت الركائز - شخصي وذكي</title>
+    <style>body{{font-family:Arial, sans-serif;margin:40px;background:#f0f8ff;color:#333;}}
+    .box{{background:white;padding:20px;border-radius:10px;margin:10px 0;box-shadow: 0 2px 4px rgba(0,0,0,0.1);}}
+    h1, h2 {{color:#0056b3;}}
+    .green{{color:#28a745;}} .red{{color:#dc3545;}} .blue{{color:#007bff;}} .orange{{color:#fd7e14;}}
     </style></head><body>
     
     <div class="box">
-    <h1>🚀 مكتب الركائز - بوت سريع مع ردود الشكر</h1>
+    <h1>🚀 مكتب الركائز - بوت شخصي وذكي</h1>
     </div>
     
     <div class="box">
     <h2>📊 الحالة:</h2>
     <p class="{'green' if openai_client else 'red'}">{'✅' if openai_client else '❌'} OpenAI API</p>
-    <p class="{'green' if enhanced_retriever else 'red'}">{'✅' if enhanced_retriever else '❌'} قاعدة البيانات</p>
+    <p class="{'green' if enhanced_retriever else 'red'}">{'✅' if enhanced_retriever else '❌'} قاعدة بيانات المعلومات (ChromaDB)</p>
+    <p class="{'green' if customers_loaded > 0 else 'orange'}">{'✅' if customers_loaded > 0 else '⚠️'} قاعدة بيانات العملاء ({customers_loaded} عميل)</p>
     <p class="green">⚡ الردود السريعة - نشط</p>
-    <p class="blue">🙏 <strong>جديد!</strong> ردود الشكر السريعة - نشط</p>
+    <p class="blue">🙏 ردود الشكر السريعة - نشط</p>
     <p class="green">📱 المحادثات النشطة: {active_conversations}</p>
     </div>
     
     <div class="box">
-    <h2>⚡ المميزات:</h2>
+    <h2>⭐ المميزات الجديدة:</h2>
     <ul>
-    <li>✅ ردود ترحيب فورية (< 0.1s)</li>
-    <li class="blue">✅ <strong>جديد!</strong> ردود شكر فورية باللهجة السعودية</li>
-    <li>✅ كشف أسعار تلقائي مع صورة</li>
-    <li>✅ معدل استجابة 0.5 ثانية</li>
-    <li>✅ ردود احتياطية ذكية</li>
+    <li>✅ <strong>تخصيص الردود:</strong> يتعرف على العميل بالاسم ويرحب به بشكل شخصي.</li>
+    <li>✅ <strong>سياق المحادثة:</strong> يفهم طلبات العميل السابقة والحالية.</li>
+    <li>✅ <strong>متابعة الطلبات:</strong> يمكنه الإجابة عن حالة طلبات الاستقدام الحالية.</li>
+    <li>✅ <strong>اقتراحات ذكية:</strong> يقترح خدمات بناءً على تفضيلات العميل.</li>
     </ul>
     </div>
     
-    <div class="box">
-    <h2>🙏 أمثلة رسائل الشكر المدعومة:</h2>
-    <ul>
-    <li><strong>شكراً ليك</strong> - شكرا لك - الله يعطيك العافية</li>
-    <li><strong>تسلم إيدك</strong> - ما قصرت - جزاك الله خير</li>
-    <li><strong>مشكور</strong> - الله يوفقك - كثر خيرك</li>
-    <li><strong>Thank you</strong> - Thanks - Appreciate it</li>
-    <li><strong>يعطيك العافية</strong> - بارك الله فيك</li>
-    </ul>
-    </div>
-    
-    <div class="box">
-    <h2>🔗 مواقع رفع الصور المجانية:</h2>
-    <ul>
-    <li><strong>imgur.com</strong> - الأفضل والأسرع</li>
-    <li><strong>postimg.cc</strong> - سريع وموثوق</li>
-    <li><strong>imgbb.com</strong> - جودة عالية</li>
-    <li><strong>i.ibb.co</strong> - بسيط وسهل</li>
-    </ul>
-    <p><strong>ملاحظة:</strong> بعد رفع الصورة، استبدل الرابط في الكود</p>
-    </div>
-    
-    <p class="green"><strong>النظام يعمل بأقصى سرعة مع ردود الشكر الذكية! 🚀🙏</strong></p>
     </body></html>"""
 
 @app.route('/test-quick/<message>')
@@ -666,7 +431,7 @@ def test_quick_response(message):
     start_time = time.time()
     
     is_greeting = quick_system.is_greeting_message(message)
-    is_thanks = quick_system.is_thanks_message(message)  # 🙏 اختبار الشكر - جديد!
+    is_thanks = quick_system.is_thanks_message(message)
     is_price = quick_system.is_price_inquiry(message)
     
     processing_time = time.time() - start_time
@@ -674,16 +439,14 @@ def test_quick_response(message):
     result = {
         "الرسالة": message,
         "ترحيب؟": is_greeting,
-        "شكر؟": is_thanks,  # 🙏 جديد!
+        "شكر؟": is_thanks,
         "سؤال أسعار؟": is_price,
         "وقت المعالجة": f"{processing_time:.4f} ثانية",
         "نوع الرد": "سريع" if (is_greeting or is_thanks or is_price) else "عادي"
     }
     
-    if is_greeting:
-        result["الرد"] = quick_system.get_welcome_response()
-    elif is_thanks:  # 🙏 رد الشكر - جديد!
-        result["الرد"] = quick_system.get_thanks_response()
+    if is_greeting: result["الرد"] = quick_system.get_welcome_response()
+    elif is_thanks: result["الرد"] = quick_system.get_thanks_response()
     elif is_price:
         text, image = quick_system.get_price_response()
         result["الرد"] = text
@@ -691,63 +454,43 @@ def test_quick_response(message):
     
     return jsonify(result, ensure_ascii=False)
 
-# مسار جديد لاختبار ردود الشكر فقط 🙏
-@app.route('/test-thanks/<message>')
-def test_thanks_only(message):
-    """اختبار خاص لردود الشكر فقط"""
-    start_time = time.time()
-    
-    is_thanks = quick_system.is_thanks_message(message)
-    processing_time = time.time() - start_time
-    
-    result = {
-        "الرسالة": message,
-        "هل هي رسالة شكر؟": is_thanks,
-        "وقت المعالجة": f"{processing_time:.4f} ثانية"
-    }
-    
-    if is_thanks:
-        result["الرد"] = quick_system.get_thanks_response()
-        result["نوع الرد"] = "شكر فوري 🙏"
-    else:
-        result["نوع الرد"] = "ليست رسالة شكر"
-    
-    return jsonify(result, ensure_ascii=False)
-
 # --- 🧹 تنظيف سريع ---
 def quick_cleanup():
     """تنظيف دوري سريع"""
     while True:
-        time.sleep(900)  # كل 15 دقيقة
+        time.sleep(1800)  # كل 30 دقيقة
         
+        print("🧹 بدء عملية التنظيف الدورية...")
         conversation_manager.cleanup_old_conversations()
         
-        # تنظيف الذاكرة
-        if len(whatsapp_handler.processing_messages) > 500:
+        # تنظيف الذاكرة المؤقتة للرسائل المكررة
+        if len(whatsapp_handler.processing_messages) > 1000:
             whatsapp_handler.processing_messages.clear()
-            print("🧹 تنظيف ذاكرة الرسائل")
+            print("🧹 تنظيف ذاكرة الرسائل المكررة.")
         
-        # تنظيف rate limiting
+        # تنظيف قائمة تحديد المعدل
         current_time = time.time()
         expired_numbers = [
             number for number, last_time in whatsapp_handler.rate_limit.items() 
-            if current_time - last_time > 1800  # 30 دقيقة
+            if current_time - last_time > 3600  # ساعة واحدة
         ]
         for number in expired_numbers:
-            del whatsapp_handler.rate_limit[number]
+            if number in whatsapp_handler.rate_limit:
+                del whatsapp_handler.rate_limit[number]
+        if expired_numbers:
+            print(f"🧹 تم تنظيف سجلات تحديد المعدل لـ {len(expired_numbers)} رقم.")
 
 # تشغيل التنظيف السريع
 cleanup_thread = threading.Thread(target=quick_cleanup, daemon=True)
 cleanup_thread.start()
 
 if __name__ == '__main__':
-    print("🚀 تشغيل بوت الركائز السريع مع ردود الشكر...")
-    print("⚡ المميزات:")
-    print("   - ردود فورية للترحيب والأسعار")
-    print("   - 🙏 ردود شكر فورية باللهجة السعودية - جديد!")
-    print("   - كشف ذكي للكلمات العربية") 
-    print("   - إرسال صور الأسعار تلقائياً")
-    print("   - معدل استجابة 0.5 ثانية")
-    print("   - ردود احتياطية ذكية")
     print("=" * 50)
+    print("🚀 تشغيل بوت الركائز الذكي والمخصص...")
+    print("⭐ المميزات الجديدة:")
+    print("   - ✅ يتعرف على العملاء ويرحب بهم بأسمائهم.")
+    print("   - ✅ يفهم سياق طلبات العميل السابقة والحالية.")
+    print("   - ✅ يقدم ردوداً شخصية ومخصصة لكل عميل.")
+    print("=" * 50)
+    # استخدم gunicorn أو waitress في الإنتاج بدلاً من app.run
     app.run(debug=False, host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
