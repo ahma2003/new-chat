@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة تحكم إضافة العملاء</title>
+    <style>
+        /* أضف بعض التنسيقات هنا لجعله أجمل */
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        form { display: flex; flex-direction: column; gap: 10px; max-width: 400px; }
+        input, select, textarea { padding: 8px; font-size: 16px; }
+        button { background-color: #007bff; color: white; padding: 10px; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>إضافة عميل جديد</h1>
+    <form action="/add-customer" method="POST">
+        <input type="text" name="phone" placeholder="رقم الهاتف (مثال: 966501234567)" required>
+        <input type="text" name="name" placeholder="اسم العميل" required>
+        <select name="gender">
+            <option value="ذكر">ذكر</option>
+            <option value="أنثى">أنثى</option>
+        </select>
+        <input type="text" name="nationality" placeholder="الجنسية المفضلة">
+        <textarea name="preferences" placeholder="ملاحظات وتفضيلات"></textarea>
+        <button type="submit">إضافة عميل</button>
+    </form>
+</body>
+</html>
